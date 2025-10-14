@@ -27,12 +27,18 @@
     <div class="d-flex justify-content-between align-items-start mb-4">
         <h4><i class="fas fa-chart-line"></i> Analysis Results</h4>
         {% if result.url_exists == False %}
-            <span class="status-warning">
-                <i class="fas fa-exclamation-circle"></i> URL NOT FOUND
-            </span>
+            {% if result.is_malicious %}
+                <span class="status-warning">
+                    <i class="fas fa-exclamation-triangle"></i> MALICIOUS PATTERNS + URL NOT FOUND
+                </span>
+            {% else %}
+                <span class="status-warning">
+                    <i class="fas fa-question-circle"></i> URL NOT FOUND - CANNOT VERIFY SAFETY
+                </span>
+            {% endif %}
         {% elif result.is_malicious %}
             <span class="status-malicious">
-                <i class="fas fa-exclamation-triangle"></i> MALICIOUS PATTERNS
+                <i class="fas fa-exclamation-triangle"></i> MALICIOUS PATTERNS DETECTED
             </span>
         {% else %}
             <span class="status-legitimate">
@@ -114,15 +120,27 @@
     </div>
     {% endif %}
     {% else %}
+    {% if result.url_exists == False %}
+    <div class="alert alert-warning" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+            <div>
+                <h5 class="alert-heading mb-1">Cannot determine URL safety</h5>
+                <p class="mb-0">The URL doesn't exist, so we cannot verify if it's safe or dangerous. However, no malicious patterns were detected in the URL structure.</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
     <div class="alert alert-success" role="alert">
         <div class="d-flex align-items-center">
             <i class="fas fa-shield-alt fa-2x me-3"></i>
             <div>
                 <h5 class="alert-heading mb-1">URL appears to be safe!</h5>
-                <p class="mb-0">No malicious patterns or security threats were detected in this URL.</p>
+                <p class="mb-0">No malicious patterns or security threats were detected in this URL, and the URL is accessible.</p>
             </div>
         </div>
     </div>
+    {% endif %}
     {% endif %}
     
     <!-- URL Validation Results -->
