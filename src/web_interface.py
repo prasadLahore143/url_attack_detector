@@ -29,16 +29,18 @@ def analyze_url():
             # Analyze URL with automatic validation
             result = detector.analyze_url(url, validate_existence=True)
             
-            # Determine if attack was "successful" based on URL existence and maliciousness
+            # Determine success based on URL status and safety
             is_successful = False
-            if result['is_malicious'] and result.get('url_exists'):
-                # If URL exists and contains malicious patterns, consider it potentially successful
-                is_successful = True
-            elif not result['is_malicious'] and result.get('url_exists'):
-                # Clean URL that exists - not an attack
-                is_successful = False
-            elif result['is_malicious'] and not result.get('url_exists', True):
-                # Malicious pattern but URL doesn't exist - attack would fail
+            if result.get('url_exists') == True:
+                # URL exists and is accessible
+                if not result['is_malicious']:
+                    # Safe URL that exists - this is a successful legitimate access
+                    is_successful = True
+                else:
+                    # Malicious URL that exists - potential security risk
+                    is_successful = False
+            else:
+                # URL doesn't exist - no successful access possible
                 is_successful = False
             
             # Store in database

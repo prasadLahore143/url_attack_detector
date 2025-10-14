@@ -216,6 +216,13 @@ class URLAttackDetector:
         
         # Cap at 0.95 (95%) to leave room for uncertainty
         return min(base_confidence, 0.95)
+    
+    def count_suspicious_characters(self, url_string):
+        """Count suspicious characters in URL that might indicate attacks"""
+        suspicious_chars = r'[<>\'"`;(){}[\\|&$`%]'
+        import re
+        matches = re.findall(suspicious_chars, url_string)
+        return len(matches)
 
     def analyze_url(self, url, validate_existence=True, timeout=5):
         """Comprehensive URL analysis
