@@ -24,11 +24,22 @@ def analyze_url():
     """URL analysis page"""
     if request.method == 'POST':
         url = request.form.get('url')
-        validate_existence = request.form.get('validate_existence') == 'on'
         
         if url:
-            # Analyze URL with optional validation
-            result = detector.analyze_url(url, validate_existence=validate_existence)
+            # Analyze URL with automatic validation
+            result = detector.analyze_url(url, validate_existence=True)
+            
+            # Determine if attack was "successful" based on URL existence and maliciousness
+            is_successful = False
+            if result['is_malicious'] and result.get('url_exists'):
+                # If URL exists and contains malicious patterns, consider it potentially successful
+                is_successful = True
+            elif not result['is_malicious'] and result.get('url_exists'):
+                # Clean URL that exists - not an attack
+                is_successful = False
+            elif result['is_malicious'] and not result.get('url_exists', True):
+                # Malicious pattern but URL doesn't exist - attack would fail
+                is_successful = False
             
             # Store in database
             attack_data = {
@@ -36,13 +47,14 @@ def analyze_url():
                 'source_ip': request.remote_addr or '127.0.0.1',
                 'attack_type': result['attacks_detected'][0]['type'] if result['attacks_detected'] else 'legitimate',
                 'is_malicious': result['is_malicious'],
+                'is_successful': is_successful,
                 'severity': result['severity'],
                 'confidence': result['confidence'],
                 'pattern_matched': result['attacks_detected'][0]['pattern_matched'] if result['attacks_detected'] else ''
             }
             db.insert_attack(attack_data)
             
-            return render_template('analyze.html', result=result, url=url, validation_requested=validate_existence)
+            return render_template('analyze.html', result=result, url=url)
     return render_template('analyze.html')
 
 @app.route('/api/analyze', methods=['POST'])
@@ -50,12 +62,11 @@ def api_analyze():
     """API endpoint for URL analysis"""
     data = request.json
     url = data.get('url')
-    validate_existence = data.get('validate_existence', False)
     
     if not url:
         return jsonify({'error': 'URL is required'}), 400
     
-    result = detector.analyze_url(url, validate_existence=validate_existence)
+    result = detector.analyze_url(url, validate_existence=True)
     
     # Store in database
     attack_data = {

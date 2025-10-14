@@ -165,13 +165,64 @@ class URLAttackDetector:
                 'response_time': None,
                 'error': str(e)
             }
+    
+    def calculate_pattern_confidence(self, pattern, url_data, attack_type):
+        """Calculate dynamic confidence based on pattern specificity and context"""
+        base_confidence = 0.6  # Start with 60%
+        
+        # High-confidence patterns (very specific)
+        high_confidence_patterns = [
+            r"('|(\\x27)|(\\x2D)|(\\x23))",  # SQL injection quotes
+            r"<script[^>]*>.*</script>",        # Complete script tags
+            r"union.*select",                   # SQL UNION SELECT
+            r"drop.*table",                     # SQL DROP TABLE
+            r"/etc/passwd",                     # Linux password file
+            r"\.\./.*/.*\.\./.*/.*\.\./"       # Multiple directory traversals
+        ]
+        
+        # Medium-confidence patterns
+        medium_confidence_patterns = [
+            r"javascript:",
+            r"alert\(",
+            r"\.\./",
+            r"127\.0\.0\.1"
+        ]
+        
+        # Check pattern specificity
+        if any(p in pattern for p in high_confidence_patterns):
+            base_confidence = 0.9  # 90% for very specific patterns
+        elif any(p in pattern for p in medium_confidence_patterns):
+            base_confidence = 0.75  # 75% for medium patterns
+        else:
+            base_confidence = 0.65  # 65% for general patterns
+        
+        # Boost confidence for multiple suspicious indicators
+        suspicious_chars = self.count_suspicious_characters(url_data.get('decoded', url_data.get('original', '')))
+        if suspicious_chars > 5:
+            base_confidence += 0.1
+        elif suspicious_chars > 3:
+            base_confidence += 0.05
+        
+        # Boost for dangerous attack types
+        dangerous_types = ['sql_injection', 'command_injection']
+        if attack_type in dangerous_types:
+            base_confidence += 0.05
+        
+        # Check for encoding (suggests obfuscation)
+        original_url = url_data.get('original', '')
+        decoded_url = url_data.get('decoded', '')
+        if original_url != decoded_url and ('%' in original_url or '+' in original_url):
+            base_confidence += 0.08
+        
+        # Cap at 0.95 (95%) to leave room for uncertainty
+        return min(base_confidence, 0.95)
 
-    def analyze_url(self, url, validate_existence=False, timeout=5):
+    def analyze_url(self, url, validate_existence=True, timeout=5):
         """Comprehensive URL analysis
         
         Args:
             url (str): URL to analyze
-            validate_existence (bool): Whether to check if URL actually exists
+            validate_existence (bool): Whether to check if URL actually exists (now default True)
             timeout (int): Timeout in seconds for URL validation
         """
         results = {
@@ -180,7 +231,22 @@ class URLAttackDetector:
             'attacks_detected': [],
             'severity': 'none',
             'confidence': 0.0,
-            'url_validation': None  # Will contain validation results if requested
+            'url_validation': None,  # Will contain validation results
+            'url_exists': None  # Simple boolean for URL existence
+        }
+        
+        # Always validate URL existence first
+        if validate_existence:
+            print(f"🔍 Validating URL existence: {url}")
+            validation_result = self.validate_url_exists(url, timeout)
+            results['url_validation'] = validation_result
+            results['url_exists'] = validation_result['exists']
+        
+        # Preprocess URL for pattern analysis
+        url_data = {
+            'original': url,
+            'decoded': urllib.parse.unquote(url),
+            'double_decoded': urllib.parse.unquote(urllib.parse.unquote(url))
         }
         
         # Check for different attack types
@@ -196,22 +262,19 @@ class URLAttackDetector:
         for attack_name, detector in attacks:
             detected, pattern = detector(url)
             if detected:
+                # Calculate dynamic confidence based on pattern and context
+                pattern_confidence = self.calculate_pattern_confidence(pattern, url_data, attack_name)
                 results['attacks_detected'].append({
                     'type': attack_name,
                     'pattern_matched': pattern,
-                    'confidence': 0.8
+                    'confidence': pattern_confidence
                 })
-                total_confidence += 0.8
+                total_confidence += pattern_confidence
         
         if results['attacks_detected']:
             results['is_malicious'] = True
             results['confidence'] = min(total_confidence, 1.0)
             results['severity'] = self.calculate_severity(results['attacks_detected'])
-        
-        # Optional URL validation
-        if validate_existence:
-            print(f"🔍 Validating URL existence: {url}")
-            results['url_validation'] = self.validate_url_exists(url, timeout)
         
         return results
 
