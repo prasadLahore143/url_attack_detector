@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Analyze URL - URL Attack Detection System{% endblock %}
+
+{% block content %}
+<div class="analyze-form">
+    <h4 class="mb-4"><i class="fas fa-search"></i> URL Security Analysis</h4>
+    <form method="POST">
+        <div class="mb-4">
+            <label for="url" class="form-label fw-bold">Enter URL to analyze for security threats:</label>
+            <input type="url" class="form-control form-control-modern" id="url" name="url" 
+                   placeholder="https://example.com/path?param=value" 
+                   value="{{ url if url }}" required>
+            <div class="form-text">Enter any URL to check for SQL injection, XSS, directory traversal, and other attacks.</div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+            <button type="submit" class="btn btn-analyze">
+                <i class="fas fa-search"></i> Analyze URL
+            </button>
+            <div class="text-muted">Results appear instantly</div>
+        </div>
+    </form>
+</div>
+
+{% if result %}
+<div class="result-card">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <h4><i class="fas fa-chart-line"></i> Analysis Results</h4>
+        {% if result.is_malicious %}
+            <span class="status-malicious">
+                <i class="fas fa-exclamation-triangle"></i> MALICIOUS
+            </span>
+        {% else %}
+            <span class="status-legitimate">
+                <i class="fas fa-check-circle"></i> LEGITIMATE
+            </span>
+        {% endif %}
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="text-muted">Analyzed URL:</h6>
+            <div class="bg-light p-3 rounded" style="word-break: break-all;">
+                <code>{{ result.url }}</code>
+            </div>
+        </div>
+    </div>
+
+    {% if result.is_malicious %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="text-center">
+                <div class="h3 mb-2">
+                    <span class="badge-modern severity-{{ result.severity }}">{{ result.severity.upper() }}</span>
+                </div>
+                <small class="text-muted">Severity Level</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-center">
+                <div class="h3 mb-2">{{ (result.confidence * 100) | round(1) }}%</div>
+                <small class="text-muted">Confidence Score</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="text-center">
+                <div class="h3 mb-2">{{ result.attacks_detected | length }}</div>
+                <small class="text-muted">Threats Detected</small>
+            </div>
+        </div>
+    </div>
+
+    {% if result.attacks_detected %}
+    <div class="mt-4">
+        <h5 class="mb-3"><i class="fas fa-bug"></i> Detected Threats</h5>
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th>Attack Type</th>
+                        <th>Pattern Matched</th>
+                        <th>Confidence</th>
+                        <th>Risk Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attack in result.attacks_detected %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-danger">{{ attack.type.replace('_', ' ').title() }}</span>
+                        </td>
+                        <td>
+                            <code class="text-break">{{ attack.pattern_matched }}</code>
+                        </td>
+                        <td>
+                            <div class="progress" style="width: 100px; height: 20px;">
+                                <div class="progress-bar bg-danger" style="width: {{ (attack.confidence * 100) }}%">
+                                    {{ (attack.confidence * 100) | round(1) }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-warning">HIGH</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-success" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-shield-alt fa-2x me-3"></i>
+            <div>
+                <h5 class="alert-heading mb-1">URL appears to be safe!</h5>
+                <p class="mb-0">No malicious patterns or security threats were detected in this URL.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Quick Test Buttons -->
+<div class="analyze-form mt-4">
+    <h5 class="mb-3"><i class="fas fa-flask"></i> Quick Tests</h5>
+    <p class="text-muted mb-3">Click any button below to test different attack types:</p>
+    <div class="d-grid gap-2">
+        <button class="btn btn-outline-danger" onclick="setURL('http://example.com/login.php?user=\' OR \'1\'=\'1')">
+            <i class="fas fa-database"></i> SQL Injection Test
+        </button>
+        <button class="btn btn-outline-warning" onclick="setURL('http://example.com/search.php?q=<script>alert(\'XSS\')</script>')">
+            <i class="fas fa-code"></i> XSS Attack Test
+        </button>
+        <button class="btn btn-outline-info" onclick="setURL('http://example.com/file.php?path=../../../etc/passwd')">
+            <i class="fas fa-folder-open"></i> Directory Traversal Test
+        </button>
+        <button class="btn btn-outline-success" onclick="setURL('https://google.com/search?q=cybersecurity')">
+            <i class="fas fa-check"></i> Legitimate URL Test
+        </button>
+    </div>
+</div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Attack Types</h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="attackTypesAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sql">
+                                SQL Injection
+                            </button>
+                        </h2>
+                        <div id="sql" class="accordion-collapse collapse" data-bs-parent="#attackTypesAccordion">
+                            <div class="accordion-body">
+                                Detects SQL injection attempts including UNION, DROP, INSERT, and other malicious SQL commands.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#xss">
+                                Cross-Site Scripting (XSS)
+                            </button>
+                        </h2>
+                        <div id="xss" class="accordion-collapse collapse" data-bs-parent="#attackTypesAccordion">
+                            <div class="accordion-body">
+                                Identifies script injection attempts, malicious JavaScript, and HTML injection.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#traversal">
+                                Directory Traversal
+                            </button>
+                        </h2>
+                        <div id="traversal" class="accordion-collapse collapse" data-bs-parent="#attackTypesAccordion">
+                            <div class="accordion-body">
+                                Detects attempts to access files outside the web root using path traversal techniques.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#command">
+                                Command Injection
+                            </button>
+                        </h2>
+                        <div id="command" class="accordion-collapse collapse" data-bs-parent="#attackTypesAccordion">
+                            <div class="accordion-body">
+                                Identifies attempts to execute system commands through URL parameters.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ssrf">
+                                Server-Side Request Forgery
+                            </button>
+                        </h2>
+                        <div id="ssrf" class="accordion-collapse collapse" data-bs-parent="#attackTypesAccordion">
+                            <div class="accordion-body">
+                                Detects attempts to make the server perform requests to internal resources.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb"></i> Sample URLs</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Click to test:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-danger btn-sm" onclick="setURL(\"http://example.com/login.php?user=' OR '1'='1\")">
+                        SQL Injection
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="setURL('http://example.com/search.php?q=<script>alert(\"XSS\")</script>')">
+                        XSS Attack
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="setURL('http://example.com/file.php?path=../../../etc/passwd')">
+                        Directory Traversal
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="setURL('https://google.com/search?q=cybersecurity')">
+                        Legitimate URL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setURL(url) {
+    document.getElementById('url').value = url;
+}
+</script>
+{% endblock %}

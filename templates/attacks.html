@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Results - URL Attack Detection System{% endblock %}
+
+{% block content %}
+<div class="recent-attacks-table">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-list"></i> Attack Detection Results</h4>
+        <div class="d-flex gap-3">
+            <select class="form-select" onchange="filterAttacks(this.value)">
+                <option value="">All Attack Types</option>
+                <option value="sql_injection">SQL Injection</option>
+                <option value="xss">XSS</option>
+                <option value="directory_traversal">Directory Traversal</option>
+                <option value="command_injection">Command Injection</option>
+            </select>
+            <a href="/export" class="btn btn-outline-primary">
+                <i class="fas fa-download"></i> Export
+            </a>
+        </div>
+    </div>
+
+    {% if attacks %}
+    <div class="table-responsive">
+        <table class="table table-modern">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Source IP</th>
+                    <th>Attack Type</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attack in attacks %}
+                <tr>
+                    <td>{{ attack.timestamp[:19].replace('T', ' ') }}</td>
+                    <td><code>{{ attack.source_ip }}</code></td>
+                    <td>
+                        <span class="badge bg-warning">{{ attack.attack_type.replace('_', ' ').title() }}</span>
+                    </td>
+                    <td>
+                        <span class="badge-modern severity-{{ attack.severity }}">{{ attack.severity.upper() }}</span>
+                    </td>
+                    <td>
+                        {% if attack.is_malicious %}
+                            <span class="badge bg-danger">Malicious</span>
+                        {% else %}
+                            <span class="badge bg-success">Safe</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-truncate" style="max-width: 300px;" title="{{ attack.url }}">
+                        {{ attack.url[:60] }}{% if attack.url|length > 60 %}...{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination">
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page - 1 if page > 1 else 1 }}">Previous</a>
+                </li>
+                <li class="page-item active">
+                    <span class="page-link">{{ page }}</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page + 1 }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No attack data found</h5>
+        <p class="text-muted mb-4">Generate some sample data to see attack results here</p>
+        <a href="/" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterAttacks(attackType) {
+    const url = new URL(window.location);
+    if (attackType) {
+        url.searchParams.set('attack_type', attackType);
+    } else {
+        url.searchParams.delete('attack_type');
+    }
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

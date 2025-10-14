@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Export Data - URL Attack Detection System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-download"></i> Export Data</h1>
+        <p class="text-muted">Export attack detection results in various formats</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-file-export"></i> Export Options</h5>
+            </div>
+            <div class="card-body">
+                <form id="exportForm">
+                    <div class="mb-3">
+                        <label class="form-label">Export Format:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="csv" id="csv" checked>
+                            <label class="form-check-label" for="csv">
+                                <i class="fas fa-file-csv"></i> CSV (Comma Separated Values)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="json" id="json">
+                            <label class="form-check-label" for="json">
+                                <i class="fas fa-file-code"></i> JSON (JavaScript Object Notation)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="attackType" class="form-label">Filter by Attack Type:</label>
+                        <select class="form-select" name="attack_type" id="attackType">
+                            <option value="">All Attack Types</option>
+                            <option value="sql_injection">SQL Injection</option>
+                            <option value="xss">Cross-Site Scripting (XSS)</option>
+                            <option value="directory_traversal">Directory Traversal</option>
+                            <option value="command_injection">Command Injection</option>
+                            <option value="ssrf">Server-Side Request Forgery</option>
+                            <option value="lfi_rfi">Local/Remote File Inclusion</option>
+                            <option value="credential_stuffing">Credential Stuffing</option>
+                            <option value="typosquatting">Typosquatting</option>
+                            <option value="legitimate">Legitimate URLs</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="severity" class="form-label">Filter by Severity:</label>
+                        <select class="form-select" name="severity" id="severity">
+                            <option value="">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="malicious_only" id="maliciousOnly">
+                            <label class="form-check-label" for="maliciousOnly">
+                                Export only malicious attacks
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Export Information</h5>
+            </div>
+            <div class="card-body">
+                <h6>CSV Format</h6>
+                <p class="small text-muted">
+                    Comma-separated values format ideal for spreadsheet applications like Excel. 
+                    Contains all attack data with headers for easy analysis.
+                </p>
+                
+                <h6>JSON Format</h6>
+                <p class="small text-muted">
+                    JavaScript Object Notation format perfect for programmatic analysis and 
+                    integration with other security tools.
+                </p>
+                
+                <h6>Exported Fields</h6>
+                <ul class="small">
+                    <li>ID & Timestamp</li>
+                    <li>Source IP Address</li>
+                    <li>URL & HTTP Method</li>
+                    <li>Attack Type & Severity</li>
+                    <li>Success Status & Confidence</li>
+                    <li>Pattern Matched</li>
+                    <li>User Agent</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Tip:</strong> Use filters to export specific subsets of data for targeted analysis.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Quick Export</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/export/csv" class="btn btn-outline-primary">
+                        <i class="fas fa-file-csv"></i> All Data (CSV)
+                    </a>
+                    <a href="/export/json" class="btn btn-outline-secondary">
+                        <i class="fas fa-file-code"></i> All Data (JSON)
+                    </a>
+                    <a href="/export/csv?attack_type=sql_injection" class="btn btn-outline-danger">
+                        <i class="fas fa-database"></i> SQL Injections Only
+                    </a>
+                    <a href="/export/csv?attack_type=xss" class="btn btn-outline-warning">
+                        <i class="fas fa-code"></i> XSS Attacks Only
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('exportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const format = formData.get('format');
+    const params = new URLSearchParams();
+    
+    if (formData.get('attack_type')) {
+        params.append('attack_type', formData.get('attack_type'));
+    }
+    if (formData.get('severity')) {
+        params.append('severity', formData.get('severity'));
+    }
+    if (formData.get('malicious_only')) {
+        params.append('is_malicious', 'true');
+    }
+    
+    const url = `/export/${format}${params.toString() ? '?' + params.toString() : ''}`;
+    window.location.href = url;
+});
+</script>
+{% endblock %}

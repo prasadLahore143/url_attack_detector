@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - URL Attack Detection System{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card danger">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="stat-number text-danger">{{ stats.total_attacks or 0 }}</div>
+                <div class="stat-label">Total Attacks Detected</div>
+            </div>
+            <div>
+                <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="stat-number text-warning">{{ stats.successful_attacks or 0 }}</div>
+                <div class="stat-label">Successful Attacks</div>
+            </div>
+            <div>
+                <i class="fas fa-bug fa-2x text-warning"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card success">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="stat-number text-success">{{ stats.attack_types|length or 0 }}</div>
+                <div class="stat-label">Unique Source IPs</div>
+            </div>
+            <div>
+                <i class="fas fa-network-wired fa-2x text-success"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card primary">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="stat-number text-primary">{{ ((stats.malicious_attacks / stats.total_attacks * 100) | round(0) if stats.total_attacks else 0) | int }}%</div>
+                <div class="stat-label">Average Confidence</div>
+            </div>
+            <div>
+                <i class="fas fa-chart-line fa-2x text-primary"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="chart-section">
+    <div class="chart-card">
+        <h5>Attack Types Distribution</h5>
+        <div id="attackTypesChart" style="height: 200px;">
+            {% if stats.attack_types %}
+                {% for attack_type, count in stats.attack_types.items() %}
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="fw-medium">{{ attack_type.replace('_', ' ').title() }}</span>
+                    <span class="badge bg-primary">{{ count }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted text-center">No attack data available</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h5>Severity Breakdown</h5>
+        <div id="severityChart" style="height: 200px;">
+            {% if stats.severity_distribution %}
+                {% for severity, count in stats.severity_distribution.items() %}
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="fw-medium">
+                        <span class="badge-modern severity-{{ severity }}">{{ severity.upper() }}</span>
+                    </span>
+                    <span class="badge bg-secondary">{{ count }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted text-center">No severity data available</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Attacks Table -->
+<div class="recent-attacks-table">
+    <h5 class="mb-3"><i class="fas fa-history"></i> Recent Attacks</h5>
+    {% if recent_attacks %}
+    <div class="table-responsive">
+        <table class="table table-modern">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Source IP</th>
+                    <th>Attack Type</th>
+                    <th>Severity</th>
+                    <th>Confidence</th>
+                    <th>Successful</th>
+                    <th>URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attack in recent_attacks %}
+                <tr>
+                    <td>{{ attack.timestamp[:19].replace('T', ' ') }}</td>
+                    <td><code>{{ attack.source_ip }}</code></td>
+                    <td>
+                        <span class="badge bg-info">{{ attack.attack_type.replace('_', ' ').title() }}</span>
+                    </td>
+                    <td>
+                        <span class="badge-modern severity-{{ attack.severity }}">{{ attack.severity.upper() }}</span>
+                    </td>
+                    <td>
+                        <div class="progress" style="width: 80px; height: 20px;">
+                            <div class="progress-bar" style="width: {{ (attack.confidence or 0) * 100 }}%">{{ ((attack.confidence or 0) * 100) | round(0) | int }}%</div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if attack.is_successful %}
+                            <i class="fas fa-check-circle text-success"></i>
+                        {% else %}
+                            <i class="fas fa-times-circle text-danger"></i>
+                        {% endif %}
+                    </td>
+                    <td class="text-truncate" style="max-width: 200px;" title="{{ attack.url }}">
+                        {{ attack.url[:50] }}{% if attack.url|length > 50 %}...{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-database fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No attacks recorded yet</h5>
+        <p class="text-muted mb-4">Generate sample data to see the dashboard in action</p>
+        <button class="btn btn-primary btn-lg" onclick="generateSampleData()">
+            <i class="fas fa-plus-circle"></i> Generate Sample Data
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateSampleData() {
+    if (confirm('Generate 100 sample attack records?')) {
+        fetch('/generate-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'num_records=100'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating data');
+        });
+    }
+}
+</script>
+{% endblock %}
