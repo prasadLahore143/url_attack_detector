@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--mode', choices=['web', 'cli', 'generate', 'analyze'], 
                        default='web', help='Operation mode')
     parser.add_argument('--url', type=str, help='URL to analyze (for CLI mode)')
+    parser.add_argument('--validate-url', action='store_true', 
+                       help='Also check if URL exists (for CLI mode)')
     parser.add_argument('--num-records', type=int, default=1000, 
                        help='Number of records to generate')
     parser.add_argument('--port', type=int, default=5000, help='Web server port')
@@ -49,7 +51,9 @@ def main():
             sys.exit(1)
         
         print(f"Analyzing URL: {args.url}")
-        result = detector.analyze_url(args.url)
+        if args.validate_url:
+            print("🔍 URL validation enabled - checking if URL exists...")
+        result = detector.analyze_url(args.url, validate_existence=args.validate_url)
         
         print(f"Status: {'MALICIOUS' if result['is_malicious'] else 'LEGITIMATE'}")
         if result['is_malicious']:
@@ -58,6 +62,21 @@ def main():
             print(f"Attacks detected: {len(result['attacks_detected'])}")
             for attack in result['attacks_detected']:
                 print(f"  - {attack['type']}: {attack['pattern_matched']}")
+        
+        # Display URL validation results if requested
+        if result.get('url_validation'):
+            validation = result['url_validation']
+            print(f"\nURL Validation Results:")
+            if validation['exists']:
+                print(f"  ✅ URL is accessible (Status: {validation['response_code']})")
+                if validation['response_time']:
+                    print(f"  ⏱️ Response time: {validation['response_time']}ms")
+                if validation['server'] != 'Unknown':
+                    print(f"  🖥️ Server: {validation['server']}")
+            else:
+                print(f"  ❌ URL is not accessible")
+                print(f"  📝 Reason: {validation['error']}")
+                print(f"  ℹ️ Pattern-based security analysis was still performed")
         
         # Store result in database
         attack_data = {
@@ -130,9 +149,10 @@ def show_system_info():
     print("  • Local/Remote File Inclusion")
     print("  • Credential Stuffing")
     print("  • Typosquatting")
-    print("\nUsage:")
+    print("Usage:")
     print("  python main.py --mode web     # Start web interface")
     print("  python main.py --mode cli --url <URL>  # Analyze single URL")
+    print("  python main.py --mode cli --url <URL> --validate-url  # Analyze and check if URL exists")
     print("  python main.py --mode generate --num-records 1000  # Generate sample data")
     print("  python main.py --mode analyze # Interactive analysis")
     print("=" * 60)

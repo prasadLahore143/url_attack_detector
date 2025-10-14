@@ -2,6 +2,9 @@ import re
 import urllib.parse
 import base64
 import json
+import requests
+import time
+from urllib.parse import urlparse
 
 class URLAttackDetector:
     def __init__(self):
@@ -94,15 +97,90 @@ class URLAttackDetector:
             if re.search(pattern, decoded_url, re.IGNORECASE):
                 return True, pattern
         return False, None
+    
+    def validate_url_exists(self, url, timeout=5):
+        """Check if URL exists and is accessible (optional feature)"""
+        try:
+            # Parse URL to check if it's well-formed
+            parsed = urlparse(url)
+            if not parsed.scheme or not parsed.netloc:
+                return {
+                    'exists': False,
+                    'status': 'invalid_format',
+                    'response_code': None,
+                    'response_time': None,
+                    'error': 'Invalid URL format'
+                }
+            
+            start_time = time.time()
+            
+            # Make HEAD request first (lighter than GET)
+            headers = {
+                'User-Agent': 'URL Attack Detection System (Security Scanner)',
+                'Accept': '*/*'
+            }
+            
+            response = requests.head(url, timeout=timeout, headers=headers, allow_redirects=True)
+            response_time = round((time.time() - start_time) * 1000, 2)  # ms
+            
+            return {
+                'exists': response.status_code < 400,
+                'status': 'accessible' if response.status_code < 400 else 'not_accessible',
+                'response_code': response.status_code,
+                'response_time': response_time,
+                'error': None,
+                'server': response.headers.get('Server', 'Unknown'),
+                'content_type': response.headers.get('Content-Type', 'Unknown')
+            }
+            
+        except requests.exceptions.ConnectTimeout:
+            return {
+                'exists': False,
+                'status': 'timeout',
+                'response_code': None,
+                'response_time': None,
+                'error': 'Connection timeout'
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                'exists': False,
+                'status': 'connection_error',
+                'response_code': None,
+                'response_time': None,
+                'error': 'Connection failed - URL may not exist'
+            }
+        except requests.exceptions.RequestException as e:
+            return {
+                'exists': False,
+                'status': 'request_error',
+                'response_code': None,
+                'response_time': None,
+                'error': str(e)
+            }
+        except Exception as e:
+            return {
+                'exists': False,
+                'status': 'unknown_error',
+                'response_code': None,
+                'response_time': None,
+                'error': str(e)
+            }
 
-    def analyze_url(self, url):
-        """Comprehensive URL analysis"""
+    def analyze_url(self, url, validate_existence=False, timeout=5):
+        """Comprehensive URL analysis
+        
+        Args:
+            url (str): URL to analyze
+            validate_existence (bool): Whether to check if URL actually exists
+            timeout (int): Timeout in seconds for URL validation
+        """
         results = {
             'url': url,
             'is_malicious': False,
             'attacks_detected': [],
             'severity': 'none',
-            'confidence': 0.0
+            'confidence': 0.0,
+            'url_validation': None  # Will contain validation results if requested
         }
         
         # Check for different attack types
@@ -129,6 +207,11 @@ class URLAttackDetector:
             results['is_malicious'] = True
             results['confidence'] = min(total_confidence, 1.0)
             results['severity'] = self.calculate_severity(results['attacks_detected'])
+        
+        # Optional URL validation
+        if validate_existence:
+            print(f"🔍 Validating URL existence: {url}")
+            results['url_validation'] = self.validate_url_exists(url, timeout)
         
         return results
 

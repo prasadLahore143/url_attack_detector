@@ -24,10 +24,13 @@ def analyze_url():
     """URL analysis page"""
     if request.method == 'POST':
         url = request.form.get('url')
+        validate_existence = request.form.get('validate_existence') == 'on'
+        
         if url:
-            result = detector.analyze_url(url)
+            # Analyze URL with optional validation
+            result = detector.analyze_url(url, validate_existence=validate_existence)
             
-            # Store in database - THIS WAS MISSING!
+            # Store in database
             attack_data = {
                 'url': url,
                 'source_ip': request.remote_addr or '127.0.0.1',
@@ -39,7 +42,7 @@ def analyze_url():
             }
             db.insert_attack(attack_data)
             
-            return render_template('analyze.html', result=result, url=url)
+            return render_template('analyze.html', result=result, url=url, validation_requested=validate_existence)
     return render_template('analyze.html')
 
 @app.route('/api/analyze', methods=['POST'])
@@ -47,10 +50,12 @@ def api_analyze():
     """API endpoint for URL analysis"""
     data = request.json
     url = data.get('url')
+    validate_existence = data.get('validate_existence', False)
+    
     if not url:
         return jsonify({'error': 'URL is required'}), 400
     
-    result = detector.analyze_url(url)
+    result = detector.analyze_url(url, validate_existence=validate_existence)
     
     # Store in database
     attack_data = {

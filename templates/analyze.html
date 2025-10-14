@@ -13,6 +13,15 @@
                    value="{{ url if url }}" required>
             <div class="form-text">Enter any URL to check for SQL injection, XSS, directory traversal, and other attacks.</div>
         </div>
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="validate_existence" name="validate_existence">
+                <label class="form-check-label" for="validate_existence">
+                    <i class="fas fa-globe"></i> Also check if URL actually exists (requires internet)
+                </label>
+                <div class="form-text">This will test if the URL is accessible on the internet. Disable for safe testing with fake URLs.</div>
+            </div>
+        </div>
         <div class="d-flex gap-3 align-items-center">
             <button type="submit" class="btn btn-analyze">
                 <i class="fas fa-search"></i> Analyze URL
@@ -116,6 +125,76 @@
             <div>
                 <h5 class="alert-heading mb-1">URL appears to be safe!</h5>
                 <p class="mb-0">No malicious patterns or security threats were detected in this URL.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- URL Validation Results -->
+    {% if result.url_validation %}
+    <div class="mt-4">
+        <h5 class="mb-3"><i class="fas fa-globe"></i> URL Validation Results</h5>
+        <div class="card">
+            <div class="card-body">
+                {% if result.url_validation.exists %}
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-check-circle text-success fa-2x me-3"></i>
+                        <div>
+                            <h6 class="mb-1 text-success">URL is accessible</h6>
+                            <small class="text-muted">The URL exists and responded successfully</small>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-times-circle text-danger fa-2x me-3"></i>
+                        <div>
+                            <h6 class="mb-1 text-danger">URL is not accessible</h6>
+                            <small class="text-muted">{{ result.url_validation.error or 'URL does not exist or is unreachable' }}</small>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div class="row">
+                    {% if result.url_validation.response_code %}
+                    <div class="col-md-3">
+                        <strong>Response Code:</strong><br>
+                        <span class="badge {% if result.url_validation.response_code < 400 %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ result.url_validation.response_code }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.url_validation.response_time %}
+                    <div class="col-md-3">
+                        <strong>Response Time:</strong><br>
+                        <span class="text-info">{{ result.url_validation.response_time }}ms</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.url_validation.server and result.url_validation.server != 'Unknown' %}
+                    <div class="col-md-3">
+                        <strong>Server:</strong><br>
+                        <code>{{ result.url_validation.server }}</code>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.url_validation.content_type and result.url_validation.content_type != 'Unknown' %}
+                    <div class="col-md-3">
+                        <strong>Content Type:</strong><br>
+                        <code>{{ result.url_validation.content_type }}</code>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if not result.url_validation.exists %}
+                    <div class="mt-3">
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Note:</strong> The URL doesn't exist, but pattern-based security analysis was still performed. 
+                            This is normal for testing with example/fake URLs.
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
