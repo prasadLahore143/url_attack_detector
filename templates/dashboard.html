@@ -114,7 +114,13 @@
                     <td>{{ attack.timestamp[:19].replace('T', ' ') }}</td>
                     <td><code>{{ attack.source_ip }}</code></td>
                     <td>
-                        <span class="badge bg-info">{{ attack.attack_type.replace('_', ' ').title() }}</span>
+                        {% if ',' in attack.attack_type %}
+                            {% for attack_type in attack.attack_type.split(',') %}
+                                <span class="badge bg-info me-1 mb-1">{{ attack_type.strip().replace('_', ' ').title() }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="badge bg-info">{{ attack.attack_type.replace('_', ' ').title() }}</span>
+                        {% endif %}
                     </td>
                     <td>
                         <span class="badge-modern severity-{{ attack.severity }}">{{ attack.severity.upper() }}</span>

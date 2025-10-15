@@ -243,6 +243,49 @@ class AttackDatabase:
             writer.writerows(attacks)
         
         return len(attacks)
+    
+    def clear_all_attacks(self):
+        """Clear all attacks from the database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM attacks")
+        affected_rows = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        return affected_rows
+    
+    def reset_database(self):
+        """Reset the entire database by dropping and recreating tables"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Drop existing tables
+        cursor.execute("DROP TABLE IF EXISTS attacks")
+        
+        # Recreate tables
+        cursor.execute("""
+            CREATE TABLE attacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                source_ip TEXT,
+                url TEXT NOT NULL,
+                attack_type TEXT,
+                is_malicious BOOLEAN,
+                severity TEXT,
+                confidence REAL,
+                is_successful BOOLEAN,
+                response_code INTEGER,
+                response_time REAL,
+                server_info TEXT,
+                content_type TEXT
+            )
+        """)
+        
+        conn.commit()
+        conn.close()
+        return True
 
 if __name__ == "__main__":
     # Test the database

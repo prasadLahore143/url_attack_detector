@@ -232,6 +232,12 @@
         <button class="btn btn-outline-success" onclick="setURL('https://google.com/search?q=cybersecurity')">
             <i class="fas fa-check"></i> Legitimate URL Test
         </button>
+        <button class="btn btn-outline-primary" onclick="setURL(\"http://example.com/login.php?user=' OR '1'='1&redirect=<script>alert('XSS')</script>\")">
+            <i class="fas fa-fire"></i> Multiple Attacks Test (SQL + XSS)
+        </button>
+        <button class="btn btn-outline-danger" onclick="setURL(\"http://example.com/file.php?path=../../../etc/passwd&cmd=; cat /etc/shadow\")">
+            <i class="fas fa-skull"></i> Multiple Attacks Test (Traversal + Command Injection)
+        </button>
     </div>
 </div>
 
@@ -337,5 +343,29 @@
 function setURL(url) {
     document.getElementById('url').value = url;
 }
+
+// Auto-clear session data when page loads/refreshes (keeps database intact for exports)
+document.addEventListener('DOMContentLoaded', function() {
+    // Only clear session data if we're not showing results (i.e., on fresh page load)
+    {% if not result %}
+    fetch('/clear-session', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Session data cleared - dashboard will show clean state:', data.message);
+        } else {
+            console.error('Failed to clear session data:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error clearing session data:', error);
+    });
+    {% endif %}
+});
 </script>
 {% endblock %}
